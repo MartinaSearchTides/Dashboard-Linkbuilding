@@ -66,9 +66,10 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=60");
 
-  const OM_TOKEN  = process.env.OM_API_TOKEN;
-  const LBT_TOKEN = process.env.LBT_API_TOKEN;
-  const CMS_TOKEN = process.env.CMS_API_TOKEN;
+  const OM_TOKEN        = process.env.OM_API_TOKEN;
+  const LBT_TOKEN       = process.env.LBT_API_TOKEN;
+  const CMS_TOKEN       = process.env.CMS_API_TOKEN;
+  const REPORTING_TOKEN = process.env.REPORTING_API_TOKEN;
 
   if (!OM_TOKEN || !LBT_TOKEN || !CMS_TOKEN || !REPORTING_TOKEN) {
     return res.status(500).json({

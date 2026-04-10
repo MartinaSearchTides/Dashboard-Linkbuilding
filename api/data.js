@@ -6,39 +6,33 @@ const ALL_STATUSES = [...BTF, ...TOP];
 const LBT_CLIENTS  = ["FanDuel", "FanDuel Casino", "FanDuel Racing", "CreditNinja"];
 const PRESS_CLIENT = "FanDuel";
 
-// ── Get base access info ──
 async function getAccess(apiToken) {
-  const url = SERVER + "/api/v2.1/dtable/app-access-token/";
-  const res = await fetch(url, {
+  const res = await fetch(SERVER + "/api/v2.1/dtable/app-access-token/", {
     headers: { "Authorization": "Token " + apiToken, "Accept": "application/json" }
   });
   const text = await res.text();
-  if (!res.ok) throw new Error("getAccess " + res.status + ": " + text.substring(0, 300));
+  if (!res.ok) throw new Error("getAccess " + res.status + ": " + text.substring(0, 200));
   return JSON.parse(text);
 }
 
-// ── List all rows via API Gateway ──
 async function listRows(access, tableName, viewName) {
-  const { access_token, dtable_uuid, dtable_server } = access;
-  const base = dtable_server.endsWith("/") ? dtable_server : dtable_server + "/";
-
+  const base = access.dtable_server.endsWith("/") ? access.dtable_server : access.dtable_server + "/";
+  const uuid = access.dtable_uuid;
+  const tok  = access.access_token;
   let rows = [], start = 0, limit = 1000;
 
   while (true) {
-    let url = base + "api/v2/dtables/" + dtable_uuid + "/rows/?" +
-      "table_name=" + encodeURIComponent(tableName) + "&limit=" + limit + "&start=" + start + "&convert_keys=true";
-    if (viewName && viewName.trim() !== "") {
-      url += "&view_name=" + encodeURIComponent(viewName);
-    }
+    let url = base + "api/v2/dtables/" + uuid + "/rows/?table_name=" +
+      encodeURIComponent(tableName) + "&limit=" + limit + "&start=" + start + "&convert_keys=true";
+    if (viewName && viewName.trim()) url += "&view_name=" + encodeURIComponent(viewName);
 
     const res = await fetch(url, {
-      headers: { "Authorization": "Token " + access_token, "Accept": "application/json" }
+      headers: { "Authorization": "Token " + tok, "Accept": "application/json" }
     });
     const text = await res.text();
-    if (!res.ok) throw new Error("listRows(" + tableName + (viewName ? "/" + viewName : "") + ") " + res.status + ": " + text.substring(0, 300));
+    if (!res.ok) throw new Error("listRows(" + tableName + ") " + res.status + ": " + text.substring(0, 200));
 
-    const data = JSON.parse(text);
-    const batch = data.rows || [];
+    const batch = (JSON.parse(text).rows || []);
     rows = rows.concat(batch);
     if (batch.length < limit) break;
     start += limit;
@@ -46,21 +40,16 @@ async function listRows(access, tableName, viewName) {
   return rows;
 }
 
-// ── Resolve linked column → string ──
 function resolve(val) {
   if (Array.isArray(val)) val = val[0] || null;
   if (val && typeof val === "object") return val.display_value || val.name || null;
   return val || null;
 }
 
-function getCurrentProdMonth() {
-  return new Date().toLocaleString("en-US", { month: "short", year: "numeric" });
-}
-function getCurrentMonthShort() {
-  return new Date().toLocaleString("en-US", { month: "short" });
-}
-function getCurrentYear()  { return new Date().getFullYear(); }
-function getCurrentMonth() { return new Date().getMonth() + 1; }
+function monthShort()   { return new Date().toLocaleString("en-US", { month: "short" }); }
+function prodMonth()    { return new Date().toLocaleString("en-US", { month: "short", year: "numeric" }); }
+function currentYear()  { return new Date().getFullYear(); }
+function currentMonth() { return new Date().getMonth() + 1; }
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -72,26 +61,39 @@ export default async function handler(req, res) {
   const REPORTING_TOKEN = process.env.REPORTING_API_TOKEN;
 
   if (!OM_TOKEN || !LBT_TOKEN || !CMS_TOKEN || !REPORTING_TOKEN) {
-    return res.status(500).json({
-      ok: false,
-      error: `Missing env vars: ${!OM_TOKEN?"OM_API_TOKEN ":""}${!LBT_TOKEN?"LBT_API_TOKEN ":""}${!CMS_TOKEN?"CMS_API_TOKEN ":""}${!REPORTING_TOKEN?"REPORTING_API_TOKEN":""}`
-    });
+    const missing = [
+      !OM_TOKEN && "OM_API_TOKEN",
+      !LBT_TOKEN && "LBT_API_TOKEN",
+      !CMS_TOKEN && "CMS_API_TOKEN",
+      !REPORTING_TOKEN && "REPORTING_API_TOKEN"
+    ].filter(Boolean).join(", ");
+    return res.status(500).json({ ok: false, error: "Missing env vars: " + missing });
   }
 
   try {
-    const prodMonth    = getCurrentProdMonth();
-    const monthShort   = getCurrentMonthShort();
-    const currentYear  = getCurrentYear();
-    const currentMonth = getCurrentMonth();
+    const PM    = prodMonth();
+    const MS    = monthShort();
+    const CY    = currentYear();
+    const CM    = currentMonth();
 
-    // ══════════════════════════════════════════
-    //  1. HSS BASE — OM + QUOTAS
-    // ══════════════════════════════════════════
-    let omAccess;
-    try { omAccess = await getAccess(OM_TOKEN); } catch(e) { throw new Error("HSS auth failed: " + e.message); }
+    // ── Auth all 4 bases in parallel ──
+    const [omAccess, lbtAccess, cmsAccess, reportingAccess] = await Promise.all([
+      getAccess(OM_TOKEN),
+      getAccess(LBT_TOKEN),
+      getAccess(CMS_TOKEN),
+      getAccess(REPORTING_TOKEN)
+    ]);
 
-    // Quotas
-    const quotaRows = await listRows(omAccess, "QUOTAS", "");
+    // ── Fetch all data in parallel ──
+    const [quotaRows, omRows, lbtRows, cmsRows, reportingRows] = await Promise.all([
+      listRows(omAccess, "QUOTAS", ""),
+      listRows(omAccess, "OM", "Martina Dashboard View"),
+      listRows(lbtAccess, "OM", "View for dashboard"),
+      listRows(cmsAccess, "OM", "Default View_Martina"),
+      listRows(reportingAccess, "QUOTAS", "")
+    ]);
+
+    // ── 1. Internal quotas (HSS QUOTAS) ──
     const quotas = {};
     for (const row of quotaRows) {
       const client   = resolve(row["\u{1F539}Client"] || row["Client"]);
@@ -99,49 +101,38 @@ export default async function handler(req, res) {
       const yearVal  = row["\u{1F539}Year"]      || row["Year"]     || "";
       const quotaVal = row["\u{1F539} LV Quota"] || row["LV Quota"] || 0;
       if (!client || !monthVal) continue;
-      const mOk = monthVal.trim().toLowerCase() === monthShort.toLowerCase();
-      const yOk = yearVal ? String(yearVal).trim() === String(currentYear) : true;
+      const mOk = monthVal.trim().toLowerCase() === MS.toLowerCase();
+      const yOk = yearVal ? String(yearVal).trim() === String(CY) : true;
       if (mOk && yOk) quotas[client] = parseFloat(quotaVal) || 0;
     }
 
-    // OM LV rows
-    const omRows = await listRows(omAccess, "OM", "Martina Dashboard View");
+    // ── 2. Internal OM LV data ──
     const internal = {};
     for (const row of omRows) {
       const client = resolve(row["CLIENT*"]);
       const status = row["STATUS 1"];
       const lv     = parseFloat(row["LV"]) || 0;
       const pm     = (row["Prod Month"] || "").trim();
-      if (pm !== prodMonth) continue;
+      if (pm !== PM) continue;
       if (!client || !ALL_STATUSES.includes(status)) continue;
       if (!internal[client]) internal[client] = {};
       internal[client][status] = (internal[client][status] || 0) + lv;
     }
 
-    // ══════════════════════════════════════════
-    //  2. LBT BASE
-    // ══════════════════════════════════════════
-    let lbtAccess;
-    try { lbtAccess = await getAccess(LBT_TOKEN); } catch(e) { throw new Error("LBT auth failed: " + e.message); }
-    const lbtRows   = await listRows(lbtAccess, "OM", "View for dashboard");
-    const external  = {};
+    // ── 3. External LBT ──
+    const external = {};
     for (const row of lbtRows) {
       const client = resolve(row["CLIENT*"]);
       const status = row["STATUS 1"];
       const lv     = parseFloat(row["LV"]) || 0;
       const pm     = (row["Prod Month"] || "").trim();
-      if (pm !== prodMonth) continue;
+      if (pm !== PM) continue;
       if (!client || !LBT_CLIENTS.includes(client)) continue;
       if (status !== "Published") continue;
       external[client] = (external[client] || 0) + lv;
     }
 
-    // ══════════════════════════════════════════
-    //  3. CMS MASTER BASE — Journalists (FanDuel only)
-    // ══════════════════════════════════════════
-    let cmsAccess;
-    try { cmsAccess = await getAccess(CMS_TOKEN); } catch(e) { throw new Error("CMS auth failed: " + e.message); }
-    const cmsRows   = await listRows(cmsAccess, "OM", "Default View_Martina");
+    // ── 4. Journalists / CMS Master ──
     let journalists = 0;
     for (const row of cmsRows) {
       const dateVal = row["Live Link Date"] || "";
@@ -149,41 +140,44 @@ export default async function handler(req, res) {
       if (!dateVal) continue;
       try {
         const d = new Date(String(dateVal).substring(0, 10));
-        if (d.getFullYear() === currentYear && d.getMonth() + 1 === currentMonth) {
-          journalists += lv;
-        }
+        if (d.getFullYear() === CY && d.getMonth() + 1 === CM) journalists += lv;
       } catch(e) { continue; }
     }
 
-    // ══════════════════════════════════════════
-    //  4. REPORTING BASE — Company quotas
-    // ══════════════════════════════════════════
-    let reportingAccess;
-    try { reportingAccess = await getAccess(REPORTING_TOKEN); } catch(e) { throw new Error("REPORTING auth failed: " + e.message); }
-    const reportingRows   = await listRows(reportingAccess, "QUOTAS", "");
-    const companyQuotas   = {};
+    // ── 5. Company quotas (Reporting QUOTAS) ──
+    const companyQuotas = {};
+    const reportingDebug = []; // capture first 5 rows for debugging
     for (const row of reportingRows) {
-      const client   = resolve(row["\u{1F539}Client"] || row["Client"]);
-      const monthVal = row["\u{1F539}Month"] || row["Month"] || "";
-      const quotaVal = row["\u{1F539} Monthly LV Quota"] || 0;
+      // Try all possible column name variants
+      const client   = resolve(row["Client"] || row["client"] || null);
+      const monthVal = row["Month"] || row["month"] || "";
+      const quotaVal = row["Monthly LV Quota"] || row["LV Quota"] || 0;
+
+      if (reportingDebug.length < 3) {
+        reportingDebug.push({
+          raw_keys: Object.keys(row).slice(0, 8),
+          client, monthVal, quotaVal
+        });
+      }
+
       if (!client || !monthVal) continue;
-      if (monthVal.trim().toLowerCase() === monthShort.toLowerCase()) {
+      if (monthVal.trim().toLowerCase() === MS.toLowerCase()) {
         companyQuotas[client] = parseFloat(quotaVal) || 0;
       }
     }
 
-    // ══════════════════════════════════════════
-    //  5. BUILD RESPONSE
-    // ══════════════════════════════════════════
+    // ── 6. Build response ──
     const allClients = [...new Set([...Object.keys(internal), ...Object.keys(quotas)])].sort();
 
     const clients = allClients.map(name => {
-      const quota   = quotas[name] || 0;
+      const row = {
+        client:        name,
+        quota:         quotas[name] || 0,
+        company_quota: companyQuotas[name] || 0,
+        ext_published: LBT_CLIENTS.includes(name) ? Math.round((external[name] || 0) * 100) / 100 : 0,
+        journalists:   name === PRESS_CLIENT ? Math.round(journalists * 100) / 100 : 0
+      };
       const intData = internal[name] || {};
-      const extPub  = LBT_CLIENTS.includes(name) ? Math.round((external[name] || 0) * 100) / 100 : 0;
-      const journ   = name === PRESS_CLIENT ? Math.round(journalists * 100) / 100 : 0;
-      const companyQuota = companyQuotas[name] || 0;
-      const row     = { client: name, quota, company_quota: companyQuota, ext_published: extPub, journalists: journ };
       for (const s of ALL_STATUSES) row[s] = Math.round((intData[s] || 0) * 100) / 100;
       return row;
     });
@@ -191,7 +185,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       generated: new Date().toISOString(),
-      prod_month: prodMonth,
+      prod_month: PM,
       debug: {
         quotas_loaded: Object.keys(quotas).length,
         om_rows: omRows.length,
@@ -199,6 +193,8 @@ export default async function handler(req, res) {
         cms_rows: cmsRows.length,
         internal_clients: Object.keys(internal).length,
         company_quotas_loaded: Object.keys(companyQuotas).length,
+        company_quotas_clients: Object.keys(companyQuotas),
+        reporting_sample: reportingDebug,
         journalists_total: Math.round(journalists * 100) / 100
       },
       clients

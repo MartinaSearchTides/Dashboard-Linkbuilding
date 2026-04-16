@@ -94,7 +94,7 @@ body { font-family: var(--fs); background: var(--bg); color: var(--text); min-he
 .pipeline-text { font-size: 13px; font-family: var(--fm); color: var(--text); font-weight: 500; }
 .pipeline-status { font-weight: 600; }
 .pipeline-status.covered { color: var(--green); }
-.pipeline-status.not-covered { color: var(--orange); }
+.pipeline-status.not-covered { color: var(--red); }
 
 .clients-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border2); border-radius: 8px; overflow: hidden; }
 
@@ -359,6 +359,7 @@ function renderInternal(clients) {
     var btfTotal=BTF.reduce(function(s,k){return s+n(c[k]);},0);
     var topTotal=TOP.reduce(function(s,k){return s+n(c[k]);},0);
     var pipeline=btfTotal+topTotal, pipOk=pipeline>=quota, pipPct=pct(pipeline,quota);
+    var btfOk=btfTotal>=quota, btfPct=pct(btfTotal,quota);
     var p=pct(pub,quota), pc=pcClass(p);
 
     var btfRows=BTF.map(function(s){
@@ -376,6 +377,7 @@ function renderInternal(clients) {
         '<div class="progress-labels"><span>Published vs quota</span><span class="progress-pct ppc-'+pc+'">'+p+'%</span></div>'+
         '<div class="progress-track"><div class="progress-fill pf-'+pc+'" style="width:'+Math.min(p,100)+'%"></div></div>'+
         '<div class="pipeline-badge"><div class="pip-dot '+(pipOk?"pip-ok":"pip-warn")+'"></div><div class="pipeline-text">Pipeline <strong>'+fmt(pipeline)+'</strong> ('+pipPct+'% of quota) <span class="pipeline-status '+(pipOk?"covered":"not-covered")+'">'+(pipOk?"✓ Covered":"Not yet covered")+'</span></div></div>'+
+        '<div class="pipeline-badge"><div class="pip-dot '+(btfOk?"pip-ok":"pip-warn")+'"></div><div class="pipeline-text">BTF Pipeline <strong>'+fmt(btfTotal)+'</strong> ('+btfPct+'% of quota) <span class="pipeline-status '+(btfOk?"covered":"not-covered")+'">'+(btfOk?"✓ Covered":"Not covered")+'</span></div></div>'+
       '</div>'+
       '<div class="funnels">'+
         '<div class="funnel-col"><div class="funnel-heading fh-btf"><svg width="6" height="6" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="var(--teal)"/></svg>Bottom Funnel (published incl.)</div><div class="funnel-total ft-btf">'+fmt(btfTotal)+'</div><div class="status-list">'+btfRows+'</div></div>'+

@@ -89,6 +89,12 @@ body { font-family: var(--fs); background: var(--bg); color: var(--text); min-he
 .pip-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .pip-ok   { background: var(--green); }
 .pip-warn { background: var(--orange); }
+.pipeline-badge { background: var(--surface3); border: 1px solid var(--border2); border-radius: 5px; padding: 10px 16px; margin-top: 12px; display: flex; align-items: center; gap: 10px; }
+.pipeline-badge .pip-dot { width: 10px; height: 10px; }
+.pipeline-text { font-size: 13px; font-family: var(--fm); color: var(--text); font-weight: 500; }
+.pipeline-status { font-weight: 600; }
+.pipeline-status.covered { color: var(--green); }
+.pipeline-status.not-covered { color: var(--orange); }
 
 .clients-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border2); border-radius: 8px; overflow: hidden; }
 
@@ -149,14 +155,6 @@ body { font-family: var(--fs); background: var(--bg); color: var(--text); min-he
 .st-na       { color: var(--muted); }
 .source-sub { font-size: 11px; font-family: var(--fm); color: var(--muted); }
 
-.asfee-wrap { padding: 12px 24px; border-top: 1px solid var(--border); background: var(--surface2); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.asfee-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--fm); color: var(--muted); white-space: nowrap; }
-.asfee-input { width: 100px; background: var(--surface); border: 1px solid var(--border2); border-radius: 3px; color: var(--text); font-family: var(--fm); font-size: 13px; padding: 5px 8px; outline: none; font-variant-numeric: tabular-nums; }
-.asfee-input:focus { border-color: var(--purple-bdr); }
-.asfee-save { padding: 5px 10px; background: var(--purple-dim); border: 1px solid var(--purple-bdr); border-radius: 3px; color: var(--purple); font-size: 10px; font-weight: 600; font-family: var(--fm); letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
-.asfee-result { font-size: 12px; font-family: var(--fm); font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; margin-left: 4px; }
-.asfee-hint { color: var(--muted); font-weight: 400; font-size: 11px; }
-
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; z-index: 100; }
 .modal-box { background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; padding: 2rem; width: 100%; max-width: 440px; box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
 .modal-title { font-family: var(--fd); font-size: 20px; font-weight: 700; margin-bottom: 0.3rem; }
@@ -171,8 +169,55 @@ body { font-family: var(--fs); background: var(--bg); color: var(--text); min-he
 
 @media (max-width: 900px) {
   .clients-grid { grid-template-columns: 1fr; }
-  .summary-bar  { grid-template-columns: repeat(3,1fr); }
+  .summary-bar  { grid-template-columns: repeat(2,1fr); }
   .sources      { grid-template-columns: 1fr !important; }
+  .funnels      { grid-template-columns: 1fr; }
+  .funnel-col:first-child { border-right: none; border-bottom: 1px solid var(--border); }
+}
+
+@media (max-width: 640px) {
+  #dashboard { padding: 0 1rem 2rem; }
+  .topnav { padding: 0.8rem 0; }
+  .nav-brand { font-size: 15px; }
+  .nav-brand span { font-size: 12px; }
+  .nav-meta { font-size: 10px; }
+  .refresh-btn { font-size: 10px; padding: 5px 10px; }
+  .tabs { overflow-x: auto; }
+  .tab { padding: 11px 16px; font-size: 10px; white-space: nowrap; }
+  .summary-bar { grid-template-columns: 1fr; }
+  .sum-tile { padding: 1rem 1.2rem; }
+  .sum-label { font-size: 9px; }
+  .sum-value { font-size: 26px; }
+  .pipeline-indicator { font-size: 9px; }
+  .card-header { padding: 16px 18px 14px; flex-wrap: wrap; gap: 8px; }
+  .client-name { font-size: 19px; }
+  .quota-pill { font-size: 11px; padding: 3px 8px; }
+  .progress-wrap { padding: 11px 18px 13px; }
+  .progress-labels { font-size: 10px; }
+  .funnels { grid-template-columns: 1fr; }
+  .funnel-col { padding: 14px 18px 18px; }
+  .funnel-col:first-child { border-right: none; border-bottom: 1px solid var(--border); }
+  .funnel-heading { font-size: 8px; }
+  .funnel-total { font-size: 34px; letter-spacing: -1px; }
+  .status-row { gap: 6px; }
+  .s-name { font-size: 11px; }
+  .s-val { font-size: 12px; }
+  .s-val-pub { font-size: 14px; }
+  .source-col { padding: 14px 18px 16px; }
+  .source-heading { font-size: 8px; }
+  .source-total { font-size: 32px; letter-spacing: -1.5px; }
+  .source-sub { font-size: 10px; }
+  .pipeline-badge { padding: 8px 12px; margin-top: 10px; }
+  .pipeline-text { font-size: 11px; }
+  .pipeline-badge .pip-dot { width: 8px; height: 8px; }
+  .modal-box { padding: 1.5rem; margin: 1rem; }
+  .modal-title { font-size: 18px; }
+  .modal-row { flex-direction: column; align-items: stretch; }
+  .modal-label { min-width: auto; margin-bottom: 4px; }
+  .modal-footer { flex-direction: column-reverse; }
+  .modal-save, .modal-cancel { width: 100%; }
+  .load-title { font-size: 36px; text-align: center; }
+  .load-wordmark { font-size: 11px; }
 }
 </style>
 </head>
@@ -230,11 +275,9 @@ var TOP = ["Site Approved","Negotiation"];
 var LBT_CLIENTS  = ["FanDuel","FanDuel Casino","FanDuel Racing","CreditNinja"];
 var PRESS_CLIENT = "FanDuel";
 var SK_QUOTAS = "st_company_quotas";
-var SK_ASFEE  = "st_asfee_values";
 var globalClients = [];
 
 function getQ() { try { return JSON.parse(localStorage.getItem(SK_QUOTAS)||"{}"); } catch(e) { return {}; } }
-function getA() { try { return JSON.parse(localStorage.getItem(SK_ASFEE)||"{}");  } catch(e) { return {}; } }
 
 function n(v) { var x = parseFloat(v); return isNaN(x) ? 0 : x; }
 function fmt(v) { return Math.round(v||0).toLocaleString("en-US"); }
@@ -332,7 +375,7 @@ function renderInternal(clients) {
       '<div class="progress-wrap">'+
         '<div class="progress-labels"><span>Published vs quota</span><span class="progress-pct ppc-'+pc+'">'+p+'%</span></div>'+
         '<div class="progress-track"><div class="progress-fill pf-'+pc+'" style="width:'+Math.min(p,100)+'%"></div></div>'+
-        '<div class="pipeline-indicator" style="margin-top:6px"><div class="pip-dot '+(pipOk?"pip-ok":"pip-warn")+'"></div>Pipeline '+fmt(pipeline)+' ('+pipPct+'% of quota)'+(pipOk?" - covered":"")+'</div>'+
+        '<div class="pipeline-badge"><div class="pip-dot '+(pipOk?"pip-ok":"pip-warn")+'"></div><div class="pipeline-text">Pipeline <strong>'+fmt(pipeline)+'</strong> ('+pipPct+'% of quota) <span class="pipeline-status '+(pipOk?"covered":"not-covered")+'">'+(pipOk?"✓ Covered":"Not yet covered")+'</span></div></div>'+
       '</div>'+
       '<div class="funnels">'+
         '<div class="funnel-col"><div class="funnel-heading fh-btf"><svg width="6" height="6" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="var(--teal)"/></svg>Bottom Funnel (published incl.)</div><div class="funnel-total ft-btf">'+fmt(btfTotal)+'</div><div class="status-list">'+btfRows+'</div></div>'+
@@ -343,7 +386,6 @@ function renderInternal(clients) {
 }
 
 function renderCompany(clients) {
-  var storedA=getA();
   var totInt=0,totExt=0,totJourn=0,totQ=0;
   clients.forEach(function(c) {
     totInt   += n(c["Published"]);
@@ -373,10 +415,8 @@ function renderCompany(clients) {
     var extPub=hasExt?n(c["ext_published"]):0;
     var journVal=hasJourn?n(c["journalists"]):0;
     var cq=n(c["company_quota"]);
-    var asfee=n(storedA[name]);
     var total=intPub+extPub+journVal;
     var p=pct(total,cq), pc=pcClass(p);
-    var feeTotal=asfee>0?total*asfee:null;
 
     var sourcesHTML="";
     if (isSimple) {
@@ -406,10 +446,6 @@ function renderCompany(clients) {
       }
     }
 
-    var feeHTML=feeTotal!==null
-      ?'<span class="asfee-result">Total fee: $'+Math.round(feeTotal).toLocaleString("en-US")+'</span>'
-      :'<span class="asfee-result"><span class="asfee-hint">enter fee per LV above</span></span>';
-
     var card=document.createElement("div"); card.className="company-card";
     card.innerHTML=
       '<div class="card-header"><div class="client-name">'+esc(name)+'</div>'+
@@ -417,22 +453,9 @@ function renderCompany(clients) {
       '<div class="progress-wrap">'+
         '<div class="progress-labels"><span>Total published vs company quota</span><span class="progress-pct ppc-'+pc+'">'+p+'% - '+fmt(total)+' / '+fmt(cq)+'</span></div>'+
         '<div class="progress-track"><div class="progress-fill pf-'+pc+'" style="width:'+Math.min(p,100)+'%"></div></div></div>'+
-      sourcesHTML+
-      '<div class="asfee-wrap"><span class="asfee-label">AS fee / LV</span>'+
-        '<input class="asfee-input" type="number" id="asfee-'+esc(name)+'" value="'+(asfee||"")+'" placeholder="$ per LV" step="0.01">'+
-        '<button class="asfee-save" onclick="saveAsfee(\''+esc(name)+'\')">Save</button>'+
-        feeHTML+'</div>';
+      sourcesHTML;
     grid.appendChild(card);
   });
-}
-
-function saveAsfee(name) {
-  var inp=document.getElementById("asfee-"+name);
-  if (!inp) return;
-  var stored=getA();
-  stored[name]=parseFloat(inp.value)||0;
-  localStorage.setItem(SK_ASFEE,JSON.stringify(stored));
-  renderCompany(globalClients);
 }
 
 function openModal() {

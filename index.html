@@ -102,10 +102,14 @@ body { font-family: var(--fs); background: var(--bg); color: var(--text); min-he
 .client-card:hover { background: var(--surface2); }
 .client-card:nth-child(odd)  { border-top: 3px solid var(--purple); }
 .client-card:nth-child(even) { border-top: 3px solid var(--teal); }
+.client-card.quota-achieved { background: #f0fdf4; }
+.client-card.quota-achieved:hover { background: #dcfce7; }
 .company-card { background: var(--surface); display: flex; flex-direction: column; }
 .company-card:hover { background: var(--surface2); }
 .company-card:nth-child(odd)  { border-top: 3px solid var(--amber); }
 .company-card:nth-child(even) { border-top: 3px solid var(--purple); }
+.company-card.quota-achieved { background: #f0fdf4; }
+.company-card.quota-achieved:hover { background: #dcfce7; }
 
 .card-header { padding: 20px 24px 16px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border); }
 .client-name { font-family: var(--fd); font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
@@ -377,7 +381,8 @@ function renderInternal(clients) {
       return '<div class="status-row"><span class="s-name">'+s+'</span><span class="s-val">'+fmt(n(c[s]))+'</span></div>';
     }).join("");
 
-    var card=document.createElement("div"); card.className="client-card";
+    var card=document.createElement("div"); 
+    card.className = "client-card" + (pub >= quota ? " quota-achieved" : "");
     card.innerHTML=
       '<div class="card-header"><div class="client-name">'+esc(c["client"])+'</div><div class="quota-pill">quota <strong>'+fmt(quota)+'</strong></div></div>'+
       '<div class="progress-wrap">'+
@@ -507,7 +512,8 @@ function renderCompany(clients) {
       }
     }
 
-    var card=document.createElement("div"); card.className="company-card";
+    var card=document.createElement("div"); 
+    card.className = "company-card" + (total >= cq ? " quota-achieved" : "");
     card.innerHTML=
       '<div class="card-header"><div class="client-name">'+esc(name)+'</div>'+
         '<div class="quota-pill">quota <strong>'+fmt(cq)+'</strong></div></div>'+

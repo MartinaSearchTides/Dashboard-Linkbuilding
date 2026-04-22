@@ -437,7 +437,6 @@ function renderNext(clients, nextMonth) {
         '<div class="progress-labels"><span>BTF Pipeline vs quota</span><span class="progress-pct ppc-'+btfClass+'">'+btfPct+'%</span></div>'+
         '<div class="progress-track"><div class="progress-fill pf-'+btfClass+'" style="width:'+Math.min(btfPct,100)+'%"></div></div>'+
         '<div class="pipeline-badge"><div class="pip-dot '+(pipOk?"pip-ok":"pip-warn")+'"></div><div class="pipeline-text">Pipeline <strong>'+fmt(pipeline)+'</strong> ('+pipPct+'% of quota) <span class="pipeline-status '+(pipOk?"covered":"not-covered")+'">'+(pipOk?"✓ Covered":"Not yet covered")+'</span></div></div>'+
-        '<div class="pipeline-badge"><div class="pip-dot '+(btfOk?"pip-ok":"pip-warn")+'"></div><div class="pipeline-text">BTF Pipeline <strong>'+fmt(btfTotal)+'</strong> ('+btfPct+'% of quota) <span class="pipeline-status '+(btfOk?"covered":"not-covered")+'">'+(btfOk?"✓ Covered":"Not covered")+'</span></div></div>'+
       '</div>'+
       '<div class="funnels">'+
         '<div class="funnel-col"><div class="funnel-heading fh-btf"><svg width="6" height="6" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="var(--teal)"/></svg>Bottom Funnel (published incl.)</div><div class="funnel-total ft-btf">'+fmt(btfTotal)+'</div><div class="status-list">'+btfRows+'</div></div>'+

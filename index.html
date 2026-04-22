@@ -402,16 +402,15 @@ function renderNext(clients, nextMonth) {
     TOP.forEach(function(s) { totTop += n(c[s]); });
     totQ += n(c["quota"]);
   });
-  var op=pct(totPub,totQ), pc=pcClass(op);
+  var btfPct=pct(totBTF,totQ), btfClass=pcClass(btfPct);
   var pipeline=totBTF+totTop, pipOk=pipeline>=totQ, pipPct=pct(pipeline,totQ);
 
   document.getElementById("summary-next").innerHTML =
-    '<div class="sum-tile"><div class="sum-label">Published total</div><div class="sum-value sv-teal">'+fmt(totPub)+'</div></div>'+
     '<div class="sum-tile"><div class="sum-label">BTF total (published incl.)</div><div class="sum-value sv-teal">'+fmt(totBTF)+'</div></div>'+
     '<div class="sum-tile"><div class="sum-label">Top Funnel total</div><div class="sum-value sv-purple">'+fmt(totTop)+'</div></div>'+
     '<div class="sum-tile"><div class="sum-label">Internal quota</div><div class="sum-value sv-neutral">'+fmt(totQ)+'</div>'+
       '<div class="pipeline-indicator"><div class="pip-dot '+(pipOk?"pip-ok":"pip-warn")+'"></div>Pipeline '+fmt(pipeline)+' - '+pipPct+'% '+(pipOk?"covered":"not yet")+'</div></div>'+
-    '<div class="sum-tile"><div class="sum-label">Quota attainment</div><div class="sum-value '+sumClass(pc)+'">'+op+'%</div></div>';
+    '<div class="sum-tile"><div class="sum-label">BTF vs quota</div><div class="sum-value '+sumClass(btfClass)+'">'+btfPct+'%</div></div>';
 
   var grid=document.getElementById("grid-next");
   grid.innerHTML="";
@@ -421,7 +420,7 @@ function renderNext(clients, nextMonth) {
     var topTotal=TOP.reduce(function(s,k){return s+n(c[k]);},0);
     var pipeline=btfTotal+topTotal, pipOk=pipeline>=quota, pipPct=pct(pipeline,quota);
     var btfOk=btfTotal>=quota, btfPct=pct(btfTotal,quota);
-    var p=pct(pub,quota), pc=pcClass(p);
+    var btfClass=pcClass(btfPct);
 
     var btfRows=BTF.map(function(s){
       var v=n(c[s]), isPub=(s==="Published");
@@ -435,8 +434,8 @@ function renderNext(clients, nextMonth) {
     card.innerHTML=
       '<div class="card-header"><div class="client-name">'+esc(c["client"])+'</div><div class="quota-pill">quota <strong>'+fmt(quota)+'</strong></div></div>'+
       '<div class="progress-wrap">'+
-        '<div class="progress-labels"><span>Published vs quota</span><span class="progress-pct ppc-'+pc+'">'+p+'%</span></div>'+
-        '<div class="progress-track"><div class="progress-fill pf-'+pc+'" style="width:'+Math.min(p,100)+'%"></div></div>'+
+        '<div class="progress-labels"><span>BTF Pipeline vs quota</span><span class="progress-pct ppc-'+btfClass+'">'+btfPct+'%</span></div>'+
+        '<div class="progress-track"><div class="progress-fill pf-'+btfClass+'" style="width:'+Math.min(btfPct,100)+'%"></div></div>'+
         '<div class="pipeline-badge"><div class="pip-dot '+(pipOk?"pip-ok":"pip-warn")+'"></div><div class="pipeline-text">Pipeline <strong>'+fmt(pipeline)+'</strong> ('+pipPct+'% of quota) <span class="pipeline-status '+(pipOk?"covered":"not-covered")+'">'+(pipOk?"✓ Covered":"Not yet covered")+'</span></div></div>'+
         '<div class="pipeline-badge"><div class="pip-dot '+(btfOk?"pip-ok":"pip-warn")+'"></div><div class="pipeline-text">BTF Pipeline <strong>'+fmt(btfTotal)+'</strong> ('+btfPct+'% of quota) <span class="pipeline-status '+(btfOk?"covered":"not-covered")+'">'+(btfOk?"✓ Covered":"Not covered")+'</span></div></div>'+
       '</div>'+

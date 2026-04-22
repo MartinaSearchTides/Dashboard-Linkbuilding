@@ -245,11 +245,16 @@ body { font-family: var(--fs); background: var(--bg); color: var(--text); min-he
   </div>
   <div class="tabs">
     <div class="tab active" onclick="switchTab('internal')">Internal Team</div>
+    <div class="tab" onclick="switchTab('next')">Prep for next Month</div>
     <div class="tab" onclick="switchTab('company')">Company Overview</div>
   </div>
   <div class="tab-content active" id="tab-internal">
     <div class="summary-bar" id="summary-internal"></div>
     <div class="clients-grid" id="grid-internal"></div>
+  </div>
+  <div class="tab-content" id="tab-next">
+    <div class="summary-bar" id="summary-next"></div>
+    <div class="clients-grid" id="grid-next"></div>
   </div>
   <div class="tab-content" id="tab-company">
     <div class="summary-bar" id="summary-company"></div>
@@ -288,9 +293,10 @@ function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").re
 
 function switchTab(tab) {
   document.querySelectorAll(".tab").forEach(function(t,i) {
-    t.classList.toggle("active",(tab==="internal"&&i===0)||(tab==="company"&&i===1));
+    t.classList.toggle("active",(tab==="internal"&&i===0)||(tab==="next"&&i===1)||(tab==="company"&&i===2));
   });
   document.getElementById("tab-internal").classList.toggle("active",tab==="internal");
+  document.getElementById("tab-next").classList.toggle("active",tab==="next");
   document.getElementById("tab-company").classList.toggle("active",tab==="company");
 }
 
@@ -313,6 +319,7 @@ async function loadData() {
     document.getElementById("nav-meta").textContent = json.clients.length + " clients - " + json.prod_month + " - loaded " + loaded;
 
     renderInternal(json.clients);
+    renderNext(json.clients_next, json.next_prod_month);
     renderCompany(json.clients);
 
     loadScreen.style.display = "none";
@@ -353,6 +360,60 @@ function renderInternal(clients) {
     '<div class="sum-tile"><div class="sum-label">Quota attainment</div><div class="sum-value '+sumClass(pc)+'">'+op+'%</div></div>';
 
   var grid=document.getElementById("grid-internal");
+  grid.innerHTML="";
+  clients.forEach(function(c) {
+    var quota=n(c["quota"]), pub=n(c["Published"]);
+    var btfTotal=BTF.reduce(function(s,k){return s+n(c[k]);},0);
+    var topTotal=TOP.reduce(function(s,k){return s+n(c[k]);},0);
+    var pipeline=btfTotal+topTotal, pipOk=pipeline>=quota, pipPct=pct(pipeline,quota);
+    var btfOk=btfTotal>=quota, btfPct=pct(btfTotal,quota);
+    var p=pct(pub,quota), pc=pcClass(p);
+
+    var btfRows=BTF.map(function(s){
+      var v=n(c[s]), isPub=(s==="Published");
+      return '<div class="status-row"><span class="s-name'+(isPub?" s-name-pub":"")+'">'+s+'</span><span class="s-val'+(isPub?" s-val-pub":"")+'">'+fmt(v)+'</span></div>';
+    }).join("");
+    var topRows=TOP.map(function(s){
+      return '<div class="status-row"><span class="s-name">'+s+'</span><span class="s-val">'+fmt(n(c[s]))+'</span></div>';
+    }).join("");
+
+    var card=document.createElement("div"); card.className="client-card";
+    card.innerHTML=
+      '<div class="card-header"><div class="client-name">'+esc(c["client"])+'</div><div class="quota-pill">quota <strong>'+fmt(quota)+'</strong></div></div>'+
+      '<div class="progress-wrap">'+
+        '<div class="progress-labels"><span>Published vs quota</span><span class="progress-pct ppc-'+pc+'">'+p+'%</span></div>'+
+        '<div class="progress-track"><div class="progress-fill pf-'+pc+'" style="width:'+Math.min(p,100)+'%"></div></div>'+
+        '<div class="pipeline-badge"><div class="pip-dot '+(pipOk?"pip-ok":"pip-warn")+'"></div><div class="pipeline-text">Pipeline <strong>'+fmt(pipeline)+'</strong> ('+pipPct+'% of quota) <span class="pipeline-status '+(pipOk?"covered":"not-covered")+'">'+(pipOk?"✓ Covered":"Not yet covered")+'</span></div></div>'+
+        '<div class="pipeline-badge"><div class="pip-dot '+(btfOk?"pip-ok":"pip-warn")+'"></div><div class="pipeline-text">BTF Pipeline <strong>'+fmt(btfTotal)+'</strong> ('+btfPct+'% of quota) <span class="pipeline-status '+(btfOk?"covered":"not-covered")+'">'+(btfOk?"✓ Covered":"Not covered")+'</span></div></div>'+
+      '</div>'+
+      '<div class="funnels">'+
+        '<div class="funnel-col"><div class="funnel-heading fh-btf"><svg width="6" height="6" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="var(--teal)"/></svg>Bottom Funnel (published incl.)</div><div class="funnel-total ft-btf">'+fmt(btfTotal)+'</div><div class="status-list">'+btfRows+'</div></div>'+
+        '<div class="funnel-col"><div class="funnel-heading fh-top"><svg width="6" height="6" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="var(--purple)"/></svg>Top Funnel</div><div class="funnel-total ft-top">'+fmt(topTotal)+'</div><div class="status-list">'+topRows+'</div></div>'+
+      '</div>';
+    grid.appendChild(card);
+  });
+}
+
+function renderNext(clients, nextMonth) {
+  var totPub=0, totBTF=0, totTop=0, totQ=0;
+  clients.forEach(function(c) {
+    totPub += n(c["Published"]);
+    BTF.forEach(function(s) { totBTF += n(c[s]); });
+    TOP.forEach(function(s) { totTop += n(c[s]); });
+    totQ += n(c["quota"]);
+  });
+  var op=pct(totPub,totQ), pc=pcClass(op);
+  var pipeline=totBTF+totTop, pipOk=pipeline>=totQ, pipPct=pct(pipeline,totQ);
+
+  document.getElementById("summary-next").innerHTML =
+    '<div class="sum-tile"><div class="sum-label">Published total</div><div class="sum-value sv-teal">'+fmt(totPub)+'</div></div>'+
+    '<div class="sum-tile"><div class="sum-label">BTF total (published incl.)</div><div class="sum-value sv-teal">'+fmt(totBTF)+'</div></div>'+
+    '<div class="sum-tile"><div class="sum-label">Top Funnel total</div><div class="sum-value sv-purple">'+fmt(totTop)+'</div></div>'+
+    '<div class="sum-tile"><div class="sum-label">Internal quota</div><div class="sum-value sv-neutral">'+fmt(totQ)+'</div>'+
+      '<div class="pipeline-indicator"><div class="pip-dot '+(pipOk?"pip-ok":"pip-warn")+'"></div>Pipeline '+fmt(pipeline)+' - '+pipPct+'% '+(pipOk?"covered":"not yet")+'</div></div>'+
+    '<div class="sum-tile"><div class="sum-label">Quota attainment</div><div class="sum-value '+sumClass(pc)+'">'+op+'%</div></div>';
+
+  var grid=document.getElementById("grid-next");
   grid.innerHTML="";
   clients.forEach(function(c) {
     var quota=n(c["quota"]), pub=n(c["Published"]);

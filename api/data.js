@@ -48,6 +48,11 @@ function resolve(val) {
 
 function monthShort()   { return new Date().toLocaleString("en-US", { month: "short" }); }
 function prodMonth()    { return new Date().toLocaleString("en-US", { month: "short", year: "numeric" }); }
+function nextProdMonth() {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  return d.toLocaleString("en-US", { month: "short", year: "numeric" });
+}
 function currentYear()  { return new Date().getFullYear(); }
 function currentMonth() { return new Date().getMonth() + 1; }
 
@@ -72,6 +77,7 @@ export default async function handler(req, res) {
 
   try {
     const PM    = prodMonth();
+    const NPM   = nextProdMonth();
     const MS    = monthShort();
     const CY    = currentYear();
     const CM    = currentMonth();
@@ -108,15 +114,21 @@ export default async function handler(req, res) {
 
     // ── 2. Internal OM LV data ──
     const internal = {};
+    const internalNext = {};
     for (const row of omRows) {
       const client = resolve(row["CLIENT*"]);
       const status = row["STATUS 1"];
       const lv     = parseFloat(row["LV"]) || 0;
       const pm     = (row["Prod Month"] || "").trim();
-      if (pm !== PM) continue;
       if (!client || !ALL_STATUSES.includes(status)) continue;
-      if (!internal[client]) internal[client] = {};
-      internal[client][status] = (internal[client][status] || 0) + lv;
+      
+      if (pm === PM) {
+        if (!internal[client]) internal[client] = {};
+        internal[client][status] = (internal[client][status] || 0) + lv;
+      } else if (pm === NPM) {
+        if (!internalNext[client]) internalNext[client] = {};
+        internalNext[client][status] = (internalNext[client][status] || 0) + lv;
+      }
     }
 
     // ── 3. External LBT ──
@@ -167,7 +179,7 @@ export default async function handler(req, res) {
     }
 
     // ── 6. Build response ──
-    const allClients = [...new Set([...Object.keys(internal), ...Object.keys(quotas)])].sort();
+    const allClients = [...new Set([...Object.keys(internal), ...Object.keys(internalNext), ...Object.keys(quotas)])].sort();
 
     const clients = allClients.map(name => {
       const row = {
@@ -182,22 +194,38 @@ export default async function handler(req, res) {
       return row;
     });
 
+    const clientsNext = allClients.map(name => {
+      const row = {
+        client:        name,
+        quota:         quotas[name] || 0,
+        company_quota: companyQuotas[name] || 0,
+        ext_published: 0, // Next month doesn't have external/journalists yet
+        journalists:   0
+      };
+      const intData = internalNext[name] || {};
+      for (const s of ALL_STATUSES) row[s] = Math.round((intData[s] || 0) * 100) / 100;
+      return row;
+    });
+
     return res.status(200).json({
       ok: true,
       generated: new Date().toISOString(),
       prod_month: PM,
+      next_prod_month: NPM,
       debug: {
         quotas_loaded: Object.keys(quotas).length,
         om_rows: omRows.length,
         lbt_rows: lbtRows.length,
         cms_rows: cmsRows.length,
         internal_clients: Object.keys(internal).length,
+        internal_next_clients: Object.keys(internalNext).length,
         company_quotas_loaded: Object.keys(companyQuotas).length,
         company_quotas_clients: Object.keys(companyQuotas),
         reporting_sample: reportingDebug,
         journalists_total: Math.round(journalists * 100) / 100
       },
-      clients
+      clients,
+      clients_next: clientsNext
     });
 
   } catch(err) {
